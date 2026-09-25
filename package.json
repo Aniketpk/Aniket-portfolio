@@ -1,0 +1,9 @@
+{
+  "name": "files-pasted-by-the-user-build",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix outputs/aniket-portfolio run dev",
+    "build": "npm --prefix outputs/aniket-portfolio run build",
+    "preview": "npm --prefix outputs/aniket-portfolio run preview"
+  }
+}
