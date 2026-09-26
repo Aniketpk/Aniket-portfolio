@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useRef, useState, useEffect, useLayoutEffect } from 'react'
 import { createRoot } from 'react-dom/client'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, motion, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion'
 import {
   ArrowDown,
   ArrowDownRight,
@@ -47,15 +47,144 @@ function Reveal({ children, className = '', delay = 0, ...props }) {
   return (
     <motion.div
       className={className}
-      initial={reduce ? false : { opacity: 0, y: 22 }}
+      initial={reduce ? false : { opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.14 }}
-      transition={{ duration: 0.6, delay, ease }}
+      transition={{ duration: reduce ? 0 : 0.7, delay: reduce ? 0 : delay, ease }}
       {...props}
     >
       {children}
     </motion.div>
   )
+}
+
+function useFinePointer() {
+  const [finePointer, setFinePointer] = useState(false)
+  useEffect(() => {
+    const query = window.matchMedia('(hover: hover) and (pointer: fine) and (min-width: 761px)')
+    const update = () => setFinePointer(query.matches)
+    update()
+    query.addEventListener?.('change', update)
+    return () => query.removeEventListener?.('change', update)
+  }, [])
+  return finePointer
+}
+
+function ScrollProgress() {
+  const { scrollYProgress } = useScroll()
+  return <motion.div className="scroll-progress" style={{ scaleX: scrollYProgress }} aria-hidden="true" />
+}
+
+function MouseEffects() {
+  const glowRef = useRef(null)
+  const cursorRef = useRef(null)
+  const reduce = useReducedMotion()
+  const finePointer = useFinePointer()
+
+  useEffect(() => {
+    if (reduce || !finePointer) return undefined
+    const glow = glowRef.current
+    const cursor = cursorRef.current
+    if (!glow || !cursor) return undefined
+    document.documentElement.classList.add('has-custom-cursor')
+    let frame = 0
+    let x = -200, y = -200
+    const move = event => {
+      if (event.pointerType && event.pointerType !== 'mouse') return
+      x = event.clientX
+      y = event.clientY
+      if (!frame) frame = requestAnimationFrame(() => {
+        glow.style.transform = `translate3d(${x}px, ${y}px, 0)`
+        cursor.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`
+        frame = 0
+      })
+      const target = event.target instanceof Element ? event.target.closest('a, button, [data-cursor-view]') : null
+      cursor.dataset.state = target?.closest('[data-cursor-view]') ? 'view' : target ? 'link' : 'default'
+      cursor.textContent = target?.closest('[data-cursor-view]') ? 'VIEW' : ''
+    }
+    const exit = event => {
+      if (!event.relatedTarget) {
+        cursor.dataset.state = 'default'
+        cursor.textContent = ''
+      }
+    }
+    window.addEventListener('pointermove', move, { passive: true })
+    window.addEventListener('pointerout', exit, { passive: true })
+    return () => {
+      cancelAnimationFrame(frame)
+      document.documentElement.classList.remove('has-custom-cursor')
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerout', exit)
+    }
+  }, [finePointer, reduce])
+
+  return <><div className="mouse-glow" ref={glowRef} aria-hidden="true"/><div className="custom-cursor" ref={cursorRef} aria-hidden="true"/></>
+}
+
+function PageIntro() {
+  const reduce = useReducedMotion()
+  const [visible, setVisible] = useState(!reduce)
+  const [destination, setDestination] = useState({ x: 0, y: 0 })
+  useLayoutEffect(() => {
+    if (reduce) return
+    const logo = document.querySelector('.nav .wordmark')
+    if (logo) {
+      const rect = logo.getBoundingClientRect()
+      setDestination({ x: rect.left + rect.width / 2 - window.innerWidth / 2, y: rect.top + rect.height / 2 - window.innerHeight / 2 })
+    }
+  }, [reduce])
+  if (reduce) return null
+  return <AnimatePresence>{visible && <motion.div className="page-intro" exit={{ opacity: 0 }} transition={{ duration: 0.18 }} aria-hidden="true">
+    <motion.div className="intro-wordmark" initial={{ opacity: 0, scale: 1.08 }} animate={{ x: destination.x, y: destination.y, scale: 0.72, opacity: 1 }} transition={{ x: { delay: 0.28, duration: 0.46, ease }, y: { delay: 0.28, duration: 0.46, ease }, scale: { delay: 0.28, duration: 0.46, ease }, opacity: { duration: 0.18 } }} onAnimationComplete={() => setVisible(false)}>ANIKET<span>.</span></motion.div>
+    <motion.div className="intro-line"><motion.i initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.55, ease: 'easeInOut' }}/></motion.div>
+  </motion.div>}</AnimatePresence>
+}
+
+function MagneticAnchor({ href, className, children, ...props }) {
+  const reduce = useReducedMotion()
+  const finePointer = useFinePointer()
+  const rawX = useMotionValue(0)
+  const rawY = useMotionValue(0)
+  const x = useSpring(rawX, { stiffness: 260, damping: 18, mass: 0.25 })
+  const y = useSpring(rawY, { stiffness: 260, damping: 18, mass: 0.25 })
+  const onPointerMove = event => {
+    if (reduce || !finePointer || event.pointerType !== 'mouse') return
+    const rect = event.currentTarget.getBoundingClientRect()
+    x.set((event.clientX - rect.left - rect.width / 2) * 0.09)
+    y.set((event.clientY - rect.top - rect.height / 2) * 0.12)
+  }
+  const reset = () => { x.set(0); y.set(0) }
+  return <motion.a href={href} className={className} style={{ x, y }} onPointerMove={onPointerMove} onPointerLeave={reset} whileHover={reduce ? undefined : { scale: 1.025 }} {...props}>{children}</motion.a>
+}
+
+function TerminalTicker() {
+  const reduce = useReducedMotion()
+  const statements = [
+    { command: 'npm run build', result: '✓ Portfolio build passed' },
+    { command: 'open eKart', result: '↗ Live on Vercel' },
+    { command: 'view source', result: '↗ Aniketpk / Ekart' },
+  ]
+  const [active, setActive] = useState(0)
+  const [characters, setCharacters] = useState(reduce ? statements[0].command.length : 0)
+  const [complete, setComplete] = useState(reduce)
+  useEffect(() => {
+    if (reduce) { setCharacters(statements[active].command.length); setComplete(true); return undefined }
+    setCharacters(0); setComplete(false)
+    let count = 0
+    let outputTimer, cycleTimer
+    const timer = window.setInterval(() => {
+      count += 1
+      setCharacters(count)
+      if (count >= statements[active].command.length) {
+        window.clearInterval(timer)
+        outputTimer = window.setTimeout(() => setComplete(true), 260)
+        cycleTimer = window.setTimeout(() => setActive(index => (index + 1) % statements.length), 2200)
+      }
+    }, 42)
+    return () => { window.clearInterval(timer); window.clearTimeout(outputTimer); window.clearTimeout(cycleTimer) }
+  }, [active, reduce])
+  const current = statements[active]
+  return <div className="terminal-ticker" aria-live="off"><div className="terminal-command"><span>$</span> {current.command.slice(0, characters)}{!complete && <i className="terminal-caret"/>}</div><div className={`terminal-result ${complete ? 'visible' : ''}`}>{current.result}</div></div>
 }
 
 function IconLink({ href, children, className = '', ...props }) {
@@ -128,13 +257,14 @@ function Nav() {
               className={`nav-link ${activeSection === item.id ? 'active' : ''}`}
             >
               {item.label}
+              {activeSection === item.id && <motion.span className="nav-active-line" layoutId="nav-active-line" transition={{ type: 'spring', stiffness: 430, damping: 34 }} />}
             </a>
           ))}
         </div>
 
-        <a href="#contact" className="nav-cta">
-          Let's Talk <ArrowUpRight size={14} />
-        </a>
+        <MagneticAnchor href="#contact" className="nav-cta">
+          Let's Talk <ArrowUpRight size={14} className="micro-arrow" />
+        </MagneticAnchor>
 
         <button
           className="menu-toggle"
@@ -232,12 +362,14 @@ function CodeCard() {
         <span>OPEN TO OPPORTUNITIES</span>
         <span className="code-foot-time">UTC+05:30</span>
       </div>
+      <TerminalTicker />
     </motion.div>
   )
 }
 
 function FloatingTechBadges() {
   const reduce = useReducedMotion()
+  const finePointer = useFinePointer()
   const badgeIcons = {
     React: Code2,
     'Node.js': Server,
@@ -257,7 +389,7 @@ function FloatingTechBadges() {
             key={badge.name}
             className={`floating-badge badge-${badge.pos}`}
             animate={
-              reduce
+              reduce || !finePointer
                 ? false
                 : {
                     y: [0, -6, 0],
@@ -411,16 +543,38 @@ function ProjectVisual({ type }) {
 }
 
 function ProjectCard({ project, index }) {
+  const cardRef = useRef(null)
+  const reduce = useReducedMotion()
+  const finePointer = useFinePointer()
+  const { scrollYProgress } = useScroll({ target: cardRef, offset: ['start end', 'end start'] })
+  const rawParallax = useTransform(scrollYProgress, [0, 1], [14, -14])
+  const parallax = useSpring(rawParallax, { stiffness: 90, damping: 24 })
+  const rotateX = useMotionValue(0)
+  const rotateY = useMotionValue(0)
+  const smoothX = useSpring(rotateX, { stiffness: 180, damping: 20 })
+  const smoothY = useSpring(rotateY, { stiffness: 180, damping: 20 })
+  const onCardMove = event => {
+    if (!finePointer || reduce) return
+    const rect = event.currentTarget.getBoundingClientRect()
+    rotateY.set(((event.clientX - rect.left) / rect.width - 0.5) * 8)
+    rotateX.set(-((event.clientY - rect.top) / rect.height - 0.5) * 8)
+  }
+  const resetTilt = () => { rotateX.set(0); rotateY.set(0) }
   return (
     <Reveal className={project.featured ? 'project-featured-reveal' : ''} delay={index * 0.08}>
       <motion.article
+        ref={cardRef}
         className={`project-card ${project.featured ? 'featured' : ''}`}
-        whileHover={{ y: -5 }}
+        data-cursor-view="true"
+        onPointerMove={onCardMove}
+        onPointerLeave={resetTilt}
+        style={finePointer && !reduce ? { rotateX: smoothX, rotateY: smoothY, transformPerspective: 900, transformStyle: 'preserve-3d' } : undefined}
+        whileHover={finePointer && !reduce ? { y: -5 } : undefined}
         transition={{ duration: 0.22 }}
       >
-        <div className="project-art">
+        <motion.div className="project-art" style={{ y: finePointer && !reduce ? parallax : 0 }}>
           <ProjectVisual type={project.visual} />
-          <div className="project-status">
+          <div className="project-status" data-live={Boolean(project.liveUrl)}>
             {project.liveUrl ? (
               <>
                 <i className="online-dot pulsing" /> LIVE
@@ -431,7 +585,7 @@ function ProjectCard({ project, index }) {
               </>
             )}
           </div>
-        </div>
+        </motion.div>
 
         <div className="project-copy">
           <div className="project-heading">
@@ -451,8 +605,8 @@ function ProjectCard({ project, index }) {
           )}
 
           <div className="tags">
-            {project.technologies.map(t => (
-              <span key={t}>{t}</span>
+            {project.technologies.map((t, tagIndex) => (
+              <motion.span key={t} initial={reduce ? false : { opacity: 0, y: 5 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.28, delay: tagIndex * 0.045 }}>{t}</motion.span>
             ))}
           </div>
 
@@ -474,8 +628,21 @@ function ProjectCard({ project, index }) {
   )
 }
 
+function BackToTop() {
+  const [visible, setVisible] = useState(false)
+  const reduce = useReducedMotion()
+  useEffect(() => {
+    const update = () => setVisible(window.scrollY > 700)
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    return () => window.removeEventListener('scroll', update)
+  }, [])
+  return <AnimatePresence>{visible && <motion.button className="floating-back-top" type="button" aria-label="Back to top" initial={{ opacity: 0, y: 12, scale: 0.92 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.95 }} onClick={() => window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' })}>Back to top <ArrowDown size={13} style={{ transform: 'rotate(180deg)' }} /></motion.button>}</AnimatePresence>
+}
+
 function App() {
   const [formState, setFormState] = useState('idle')
+  const reduceMotion = useReducedMotion()
 
   useEffect(() => {
     document.title = `${profile.name} | Full Stack Developer`
@@ -514,6 +681,9 @@ function App() {
 
   return (
     <>
+      <ScrollProgress />
+      <MouseEffects />
+      <PageIntro />
       <Nav />
 
       <main>
@@ -531,13 +701,9 @@ function App() {
                 <span className="online-dot pulsing" /> AVAILABLE FOR FREELANCE & DEVELOPMENT WORK
               </motion.div>
 
-              <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.15, ease }}
-              >
-                Building digital experiences<br />
-                <span>that actually work<span className="hero-period">.</span></span>
+              <motion.h1>
+                <motion.span className="hero-line" initial={reduceMotion ? false : { opacity: 0, y: 24, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.72, delay: reduceMotion ? 0 : 0.32, ease }}>Building digital experiences</motion.span>
+                <motion.span className="hero-line" initial={reduceMotion ? false : { opacity: 0, y: 24, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.72, delay: reduceMotion ? 0 : 0.43, ease }}>that actually work<span className="hero-period">.</span></motion.span>
               </motion.h1>
 
               <motion.p
@@ -564,12 +730,12 @@ function App() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.42 }}
               >
-                <a className="button button-primary" href="#projects">
+                <MagneticAnchor className="button button-primary" href="#projects">
                   View Projects <ArrowDownRight size={15} />
-                </a>
-                <a className="button button-outline" href="#contact">
+                </MagneticAnchor>
+                <MagneticAnchor className="button button-outline" href="#contact">
                   Let's Work Together <ArrowUpRight size={15} />
-                </a>
+                </MagneticAnchor>
               </motion.div>
 
               <div className="hero-meta-row">
@@ -752,7 +918,7 @@ function App() {
                     <h3>{group.title}</h3>
                     <div className="tags">
                       {group.items.map(item => (
-                        <span key={item}>{item}</span>
+                        <motion.span key={item} initial={reduceMotion ? false : { opacity: 0, y: 7 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.3, delay: reduceMotion ? 0 : group.items.indexOf(item) * 0.055 }}>{item}</motion.span>
                       ))}
                     </div>
                   </div>
@@ -1131,6 +1297,7 @@ function App() {
           </div>
         </div>
       </footer>
+      <BackToTop />
     </>
   )
 }
