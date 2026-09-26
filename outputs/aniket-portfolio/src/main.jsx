@@ -210,9 +210,10 @@ function IconLink({ href, children, className = '', ...props }) {
 }
 
 function Nav() {
-  const [open, setOpen] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [activeSection, setActiveSection] = useState('home')
+  const reduceMotion = useReducedMotion()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -234,6 +235,40 @@ function Nav() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // Lock body scroll when mobile menu is open, and restore cleanly on close or unmount
+  useEffect(() => {
+    if (isMenuOpen) {
+      const originalOverflow = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = originalOverflow
+      }
+    }
+  }, [isMenuOpen])
+
+  // Automatically close mobile menu when switching to desktop width
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768 && isMenuOpen) {
+        setIsMenuOpen(false)
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [isMenuOpen])
+
+  // Close on Escape key press
+  useEffect(() => {
+    if (!isMenuOpen) return
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsMenuOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isMenuOpen])
+
   const navItems = [
     { label: 'About', href: '#about', id: 'about' },
     { label: 'Skills', href: '#skills', id: 'skills' },
@@ -242,63 +277,108 @@ function Nav() {
     { label: 'Contact', href: '#contact', id: 'contact' },
   ]
 
+  const handleNavLinkClick = () => {
+    setIsMenuOpen(false)
+  }
+
   return (
-    <header className={`nav-wrap ${scrolled ? 'scrolled' : ''}`}>
-      <nav className="nav container" aria-label="Main navigation">
-        <a className="wordmark" href="#home" aria-label={`${profile.name}, home`}>
-          ANIKET<span>.</span>
-        </a>
+    <>
+      <header className={`nav-wrap ${scrolled || isMenuOpen ? 'scrolled' : ''}`}>
+        <nav className="nav container" aria-label="Main navigation">
+          <a
+            className="wordmark"
+            href="#home"
+            aria-label={`${profile.name}, home`}
+            onClick={() => isMenuOpen && setIsMenuOpen(false)}
+          >
+            ANIKET<span>.</span>
+          </a>
 
-        <div className="nav-links">
-          {navItems.map(item => (
-            <a
-              key={item.href}
-              href={item.href}
-              className={`nav-link ${activeSection === item.id ? 'active' : ''}`}
-            >
-              {item.label}
-              {activeSection === item.id && <motion.span className="nav-active-line" layoutId="nav-active-line" transition={{ type: 'spring', stiffness: 430, damping: 34 }} />}
-            </a>
-          ))}
-        </div>
+          <div className="nav-links">
+            {navItems.map(item => (
+              <a
+                key={item.href}
+                href={item.href}
+                className={`nav-link ${activeSection === item.id ? 'active' : ''}`}
+              >
+                {item.label}
+                {activeSection === item.id && (
+                  <motion.span
+                    className="nav-active-line"
+                    layoutId="nav-active-line"
+                    transition={{ type: 'spring', stiffness: 430, damping: 34 }}
+                  />
+                )}
+              </a>
+            ))}
+          </div>
 
-        <MagneticAnchor href="#contact" className="nav-cta">
-          Let's Talk <ArrowUpRight size={14} className="micro-arrow" />
-        </MagneticAnchor>
+          <MagneticAnchor href="#contact" className="nav-cta">
+            Let's Talk <ArrowUpRight size={14} className="micro-arrow" />
+          </MagneticAnchor>
 
-        <button
-          className="menu-toggle"
-          aria-label={open ? 'Close menu' : 'Open menu'}
-          aria-expanded={open}
-          onClick={() => setOpen(!open)}
-        >
-          {open ? <X size={20} /> : <Menu size={20} />}
-        </button>
+          <button
+            type="button"
+            className="menu-toggle"
+            aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={isMenuOpen}
+            aria-controls="mobile-nav-menu"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            {isMenuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
+          </button>
+        </nav>
 
         <AnimatePresence>
-          {open && (
+          {isMenuOpen && (
             <motion.div
+              id="mobile-nav-menu"
               className="mobile-menu"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.22 }}
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+              animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
             >
-              {navItems.map(item => (
-                <a key={item.href} href={item.href} onClick={() => setOpen(false)}>
-                  {item.label}
-                  <ArrowUpRight size={15} />
+              <div className="mobile-menu-inner">
+                {navItems.map(item => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className={`mobile-nav-link ${activeSection === item.id ? 'active' : ''}`}
+                    onClick={handleNavLinkClick}
+                  >
+                    <span>{item.label}</span>
+                    <ArrowUpRight size={16} aria-hidden="true" />
+                  </a>
+                ))}
+                <a
+                  href="#contact"
+                  className="mobile-nav-link mobile-nav-cta"
+                  onClick={handleNavLinkClick}
+                >
+                  <span>Let's Talk</span>
+                  <ArrowUpRight size={16} aria-hidden="true" />
                 </a>
-              ))}
-              <a href="#contact" onClick={() => setOpen(false)} style={{ color: 'var(--lime)', fontWeight: 600 }}>
-                Let's Talk
-                <ArrowUpRight size={15} />
-              </a>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </nav>
-    </header>
+      </header>
+
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            className="mobile-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setIsMenuOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
+    </>
   )
 }
 

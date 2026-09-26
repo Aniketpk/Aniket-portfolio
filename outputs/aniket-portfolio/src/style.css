@@ -172,17 +172,101 @@ button {
 
 .menu-toggle {
   display: none;
-  width: 40px;
-  height: 40px;
+  min-width: 44px;
+  min-height: 44px;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
   place-items: center;
   color: #f2f3ec;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.menu-toggle:hover {
+  background: var(--panel-hover);
+  border-color: var(--line-strong);
+  color: #ffffff;
+}
+
+.menu-toggle:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
+}
+
+.mobile-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 9, 10, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 48;
 }
 
 .mobile-menu {
   display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  width: 100%;
+  background: rgba(18, 19, 15, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--line-strong);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+  max-height: calc(100dvh - 66px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  z-index: 60;
+}
+
+.mobile-menu-inner {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 24px 20px;
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+}
+
+.mobile-menu a,
+.mobile-nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  min-height: 48px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font: 15px var(--display);
+  font-weight: 500;
+  color: #e5e7dc;
+  text-decoration: none;
+  transition: color 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-menu a:hover,
+.mobile-menu a:focus-visible,
+.mobile-menu a.active,
+.mobile-nav-link:hover,
+.mobile-nav-link:focus-visible,
+.mobile-nav-link.active {
+  color: var(--lime);
+}
+
+.mobile-menu a:last-child,
+.mobile-nav-link:last-child {
+  border-bottom: none;
+}
+
+.mobile-nav-cta {
+  color: var(--lime) !important;
+  font-weight: 600 !important;
 }
 
 /* ==================== BUTTONS & CHIPS ==================== */
@@ -2020,12 +2104,9 @@ h2 em {
   }
 }
 
-@media (max-width: 650px) {
+@media (max-width: 768px) {
   :root {
     scroll-padding-top: 70px;
-  }
-  .container {
-    width: calc(100% - 36px);
   }
   .nav {
     height: 66px;
@@ -2038,29 +2119,12 @@ h2 em {
   }
   .mobile-menu {
     display: flex;
-    position: absolute;
-    top: 65px;
-    left: -18px;
-    right: -18px;
-    background: rgba(18, 19, 15, 0.96);
-    backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--line-strong);
-    padding: 16px 20px;
-    flex-direction: column;
-    gap: 12px;
-    z-index: 60;
   }
-  .mobile-menu a {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    font: 14px var(--display);
-    color: #e5e7dc;
-  }
-  .mobile-menu a:last-child {
-    border-bottom: none;
+}
+
+@media (max-width: 650px) {
+  .container {
+    width: calc(100% - 36px);
   }
   .hero {
     min-height: auto;
@@ -2201,4 +2265,4 @@ h2 em {
 .contact-bg-glow{animation:contactGlow 12s ease-in-out infinite alternate;will-change:transform,opacity}
 @keyframes contactGlow{0%{transform:translate3d(-2%,0,0) scale(.96);opacity:.72}100%{transform:translate3d(3%,-2%,0) scale(1.06);opacity:1}}
 @media(max-width:760px),(pointer:coarse){.mouse-glow,.custom-cursor{display:none!important}.project-card{transform:none!important}.project-card .project-art{transform:none!important}}
-@media(prefers-reduced-motion:reduce){.marquee-track{animation:none!important;transform:none!important}.mouse-glow,.custom-cursor{display:none!important}.contact-bg-glow{animation:none!important}.showcase-live-pill:before,.project-status[data-live="true"]:after,.terminal-caret{animation:none!important}.terminal-result{opacity:.9}.page-intro{display:none}}
+@media(prefers-reduced-motion:reduce){.marquee-track{animation:none!important;transform:none!important}.mouse-glow,.custom-cursor{display:none!important}.contact-bg-glow{animation:none!important}.showcase-live-pill:before,.project-status[data-live="true"]:after,.terminal-caret{animation:none!important}.terminal-result{opacity:.9}.page-intro{display:none}.mobile-backdrop,.mobile-menu{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;transition:none!important}}
