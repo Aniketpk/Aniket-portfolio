@@ -26,10 +26,12 @@ export const projects = [
     title: 'AI Tool Hub',
     eyebrow: 'MCA · Final project',
     description: 'A centralized AI platform bringing together text summarization, translation, code assistance, debugging, and note management.',
-    technologies: ['React.js', 'Tailwind CSS', 'Node.js', 'Express.js', 'FastAPI', 'REST APIs'],
+    technologies: ['Next.js', 'React', 'TypeScript', 'Tailwind CSS', 'FastAPI', 'REST APIs'],
     featured: true,
-    liveUrl: '',
-    githubUrl: '',
+    deployed: true,
+    deployedOn: 'Vercel',
+    liveUrl: 'https://ai-hub-tools-seven.vercel.app',
+    githubUrl: 'https://github.com/Aniketpk/Ai-hub-tools',
     visual: 'hub',
   },
   {
@@ -136,8 +138,8 @@ export const stats = [
   },
   {
     label: 'Live Deployments',
-    value: 'LIVE',
-    detail: 'eKart on Vercel',
+    value: '2 LIVE',
+    detail: 'eKart & AI Tool Hub',
   },
   {
     label: 'Full Stack',
