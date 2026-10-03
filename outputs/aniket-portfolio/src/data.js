@@ -17,7 +17,7 @@ export const projects = [
     featured: true,
     deployed: true,
     deployedOn: 'Vercel',
-    liveUrl: 'https://ekart-5jas.vercel.app',
+    liveUrl: 'https://ekart-blue.vercel.app',
     githubUrl: 'https://github.com/Aniketpk/Ekart',
     visual: 'ekart',
   },
